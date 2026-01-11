@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Indoor Biking Web App</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/ol@9.2.4/ol.css"
+      integrity="sha256-VfAyUe2uDkE1PH5rrMFgGsY96XnZpNgRsibzXsT4C3Y="
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Indoor Biking Web App</h1>
+      <p class="subhead">Web Bluetooth + OpenStreetMap demo for smart trainers.</p>
+    </header>
+
+    <main class="grid">
+      <section class="card" aria-labelledby="connection-heading">
+        <h2 id="connection-heading">Connections</h2>
+        <div class="button-row">
+          <button id="connect-trainer">Connect Trainer</button>
+          <button id="disconnect-trainer" disabled>Disconnect</button>
+        </div>
+        <div class="status-list">
+          <div>
+            <span class="label">Trainer:</span>
+            <span id="trainer-status" class="status">Disconnected</span>
+          </div>
+          <div>
+            <span class="label">FTMS Control:</span>
+            <span id="trainer-control-status" class="status">Unavailable</span>
+          </div>
+        </div>
+        <hr />
+        <div class="button-row">
+          <button id="connect-zwift">Connect Zwift Play</button>
+          <button id="disconnect-zwift" disabled>Disconnect</button>
+        </div>
+        <div class="status-list">
+          <div>
+            <span class="label">Zwift Play:</span>
+            <span id="zwift-status" class="status">Disconnected</span>
+          </div>
+          <div>
+            <span class="label">Notify Char:</span>
+            <span id="zwift-char" class="status">Not selected</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="map-heading">
+        <h2 id="map-heading">Route + Grade</h2>
+        <div id="map" class="map"></div>
+        <div class="map-details">
+          <div>
+            <span class="label">Current grade:</span>
+            <span id="grade-display" class="value">0.0%</span>
+          </div>
+          <div>
+            <span class="label">Distance:</span>
+            <span id="distance-display" class="value">0.00 km</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <label for="route-select">Route:</label>
+          <select id="route-select">
+            <option value="sample">Sample climb</option>
+          </select>
+          <button id="reload-route">Reload route</button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="telemetry-heading">
+        <h2 id="telemetry-heading">Telemetry</h2>
+        <div class="telemetry-grid">
+          <div>
+            <p class="label">Power</p>
+            <p id="power" class="value">-- W</p>
+          </div>
+          <div>
+            <p class="label">Cadence</p>
+            <p id="cadence" class="value">-- rpm</p>
+          </div>
+          <div>
+            <p class="label">Speed</p>
+            <p id="speed" class="value">-- km/h</p>
+          </div>
+        </div>
+        <div class="control-row">
+          <label for="auto-resistance">
+            <input id="auto-resistance" type="checkbox" />
+            Auto resistance
+          </label>
+          <label for="base-resistance">Base:</label>
+          <input id="base-resistance" type="number" min="0" max="100" step="1" value="20" />
+          <label for="grade-factor">Factor:</label>
+          <input id="grade-factor" type="number" min="0" max="10" step="0.1" value="1.2" />
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="controls-heading">
+        <h2 id="controls-heading">Controls & Events</h2>
+        <div class="gear-row">
+          <div>
+            <span class="label">Gear:</span>
+            <span id="gear-display" class="value">0</span>
+          </div>
+          <div>
+            <span class="label">Auto loop:</span>
+            <span id="loop-status" class="status">Stopped</span>
+          </div>
+        </div>
+        <div class="event-log" id="event-log"></div>
+      </section>
+    </main>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/ol@9.2.4/dist/ol.js"
+      integrity="sha256-euI1y9qFPrn8iDPuCDeA5c39P8qXr5CV7omY6S+2bW0="
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
