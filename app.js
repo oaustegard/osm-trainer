@@ -315,9 +315,9 @@ async function sendResistanceCommand(resistance) {
     return;
   }
   const opCode = 0x04; // Set Target Resistance Level
-  const value = new DataView(new ArrayBuffer(2));
+  const value = new DataView(new ArrayBuffer(3));
   value.setUint8(0, opCode);
-  value.setInt8(1, resistance);
+  value.setInt16(1, resistance, true);
   try {
     await controlPointChar.writeValue(value);
     logEvent(`Resistance set to ${resistance}.`);
