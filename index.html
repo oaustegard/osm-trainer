@@ -21,6 +21,9 @@
     <main class="grid">
       <section class="card" aria-labelledby="connection-heading">
         <h2 id="connection-heading">Connections</h2>
+        <p id="bluetooth-support" class="helper" data-support="checking">
+          Checking Web Bluetooth support…
+        </p>
         <div class="button-row">
           <button id="connect-trainer">Connect Trainer</button>
           <button id="disconnect-trainer" disabled>Disconnect</button>
@@ -115,6 +118,26 @@
           </div>
         </div>
         <div class="event-log" id="event-log"></div>
+      </section>
+
+      <section class="card" aria-labelledby="diagnostics-heading">
+        <h2 id="diagnostics-heading">Bluetooth Diagnostics</h2>
+        <p class="helper">
+          Connect multiple devices, stream button presses, and read raw characteristic data.
+        </p>
+        <div class="control-row">
+          <label for="diagnostic-services">Optional service UUIDs</label>
+          <input
+            id="diagnostic-services"
+            type="text"
+            placeholder="fitness_machine, 0000180f-0000-1000-8000-00805f9b34fb"
+          />
+        </div>
+        <div class="button-row">
+          <button id="connect-diagnostic">Scan &amp; connect device</button>
+          <button id="disconnect-diagnostic" disabled>Disconnect all</button>
+        </div>
+        <div id="diagnostic-devices" class="diagnostic-devices"></div>
       </section>
     </main>
 

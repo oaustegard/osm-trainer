@@ -113,6 +113,14 @@ button:disabled {
   gap: 0.75rem;
 }
 
+.control-row input[type="text"] {
+  min-width: 260px;
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5f5;
+}
+
 .control-row input[type="number"] {
   width: 80px;
   padding: 0.3rem 0.5rem;
@@ -139,9 +147,114 @@ button:disabled {
   overflow-y: auto;
 }
 
+.helper {
+  margin: 0;
+  color: #52607a;
+  font-size: 0.9rem;
+}
+
+.helper[data-support="unsupported"] {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.helper[data-support="supported"] {
+  color: #0f766e;
+  font-weight: 600;
+}
+
 .gear-row {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.diagnostic-devices {
+  display: grid;
+  gap: 1rem;
+}
+
+.diagnostic-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  background: #f8fafc;
+}
+
+.diagnostic-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diagnostic-meta {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #3b455c;
+}
+
+.diagnostic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.diagnostic-actions button {
+  background: #0ea5e9;
+}
+
+.diagnostic-actions button.secondary {
+  background: #475569;
+}
+
+.diagnostic-actions button.warn {
+  background: #dc2626;
+}
+
+.data-grid {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.data-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.data-card strong {
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.data-card span {
+  font-family: "Fira Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+  word-break: break-word;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.button-pill {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  text-align: center;
 }
