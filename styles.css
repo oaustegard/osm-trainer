@@ -153,6 +153,16 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.helper[data-support="unsupported"] {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.helper[data-support="supported"] {
+  color: #0f766e;
+  font-weight: 600;
+}
+
 .gear-row {
   display: flex;
   justify-content: space-between;

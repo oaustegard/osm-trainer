@@ -4,6 +4,7 @@ const connectTrainerBtn = document.getElementById("connect-trainer");
 const disconnectTrainerBtn = document.getElementById("disconnect-trainer");
 const connectZwiftBtn = document.getElementById("connect-zwift");
 const disconnectZwiftBtn = document.getElementById("disconnect-zwift");
+const bluetoothSupportEl = document.getElementById("bluetooth-support");
 const zwiftStatus = document.getElementById("zwift-status");
 const zwiftCharStatus = document.getElementById("zwift-char");
 const powerEl = document.getElementById("power");
@@ -90,6 +91,21 @@ function logEvent(message) {
   const timestamp = new Date().toLocaleTimeString();
   entry.textContent = `[${timestamp}] ${message}`;
   eventLog.prepend(entry);
+}
+
+function setBluetoothSupportStatus() {
+  if (!bluetoothSupportEl) {
+    return;
+  }
+  const hasWebBluetooth = !!navigator.bluetooth;
+  if (!hasWebBluetooth) {
+    bluetoothSupportEl.dataset.support = "unsupported";
+    bluetoothSupportEl.textContent =
+      "Web Bluetooth is unavailable in this browser (iOS Safari/Chrome do not support it).";
+    return;
+  }
+  bluetoothSupportEl.dataset.support = "supported";
+  bluetoothSupportEl.textContent = "Web Bluetooth is supported in this browser.";
 }
 
 function formatBytes(value) {
@@ -270,6 +286,10 @@ function parseServicesInput(rawValue) {
 }
 
 async function connectTrainer() {
+  if (!navigator.bluetooth) {
+    logEvent("Web Bluetooth unavailable in this browser.");
+    return;
+  }
   try {
     trainerDevice = await navigator.bluetooth.requestDevice({
       filters: [{ services: [FTMS_SERVICE] }],
@@ -418,6 +438,10 @@ function stopAutoLoop() {
 }
 
 async function connectZwiftPlay() {
+  if (!navigator.bluetooth) {
+    logEvent("Web Bluetooth unavailable in this browser.");
+    return;
+  }
   try {
     zwiftDevice = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
@@ -691,6 +715,10 @@ function createDiagnosticsCard(state) {
 }
 
 async function connectDiagnosticDevice() {
+  if (!navigator.bluetooth) {
+    logEvent("Web Bluetooth unavailable in this browser.");
+    return;
+  }
   let device;
   const requestedServices = parseServicesInput(diagnosticServicesInput.value);
   const options = { acceptAllDevices: true };
@@ -787,3 +815,4 @@ disconnectDiagnosticBtn.addEventListener("click", disconnectAllDiagnostics);
 
 loadRoute();
 updateTelemetryUI();
+setBluetoothSupportStatus();
