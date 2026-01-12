@@ -18,6 +18,10 @@ const eventLog = document.getElementById("event-log");
 const gearDisplay = document.getElementById("gear-display");
 const loopStatus = document.getElementById("loop-status");
 const reloadRouteBtn = document.getElementById("reload-route");
+const connectDiagnosticBtn = document.getElementById("connect-diagnostic");
+const disconnectDiagnosticBtn = document.getElementById("disconnect-diagnostic");
+const diagnosticDevicesEl = document.getElementById("diagnostic-devices");
+const diagnosticServicesInput = document.getElementById("diagnostic-services");
 
 const FTMS_SERVICE = "00001826-0000-1000-8000-00805f9b34fb";
 const INDOOR_BIKE_DATA = "00002ad2-0000-1000-8000-00805f9b34fb";
@@ -45,6 +49,8 @@ let currentDistance = 0;
 let lastLoopAt = null;
 let autoLoopTimer = null;
 let lastResistanceSet = null;
+
+const diagnostics = new Map();
 
 const map = new ol.Map({
   target: "map",
@@ -84,6 +90,25 @@ function logEvent(message) {
   const timestamp = new Date().toLocaleTimeString();
   entry.textContent = `[${timestamp}] ${message}`;
   eventLog.prepend(entry);
+}
+
+function formatBytes(value) {
+  if (!value) {
+    return "--";
+  }
+  return Array.from(value)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join(" ");
+}
+
+function formatAscii(value) {
+  if (!value) {
+    return "--";
+  }
+  const ascii = Array.from(value)
+    .map((byte) => (byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : "."))
+    .join("");
+  return ascii || "--";
 }
 
 function updateTelemetryUI() {
@@ -226,6 +251,22 @@ function parseIndoorBikeData(dataView) {
   }
 
   updateTelemetryUI();
+}
+
+function parseServicesInput(rawValue) {
+  if (!rawValue) {
+    return [];
+  }
+  return rawValue
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      if (/^[0-9a-fA-F-]{4,}$/.test(entry)) {
+        return entry.toLowerCase();
+      }
+      return entry.toLowerCase().replace(/\s+/g, "_");
+    });
 }
 
 async function connectTrainer() {
@@ -462,6 +503,260 @@ function parseZwiftNotification(dataView) {
   }
 }
 
+function createDataCard(title) {
+  const card = document.createElement("div");
+  card.className = "data-card";
+  const label = document.createElement("strong");
+  label.textContent = title;
+  const value = document.createElement("span");
+  value.textContent = "--";
+  card.append(label, value);
+  return { card, value };
+}
+
+function updateDeviceButtons(state) {
+  const entries = Array.from(state.buttons.values());
+  entries.sort((a, b) => a.label.localeCompare(b.label));
+  state.buttonsEl.innerHTML = "";
+  if (entries.length === 0) {
+    const pill = document.createElement("div");
+    pill.className = "button-pill";
+    pill.textContent = "No button events yet";
+    state.buttonsEl.appendChild(pill);
+    return;
+  }
+  entries.forEach((entry) => {
+    const pill = document.createElement("div");
+    pill.className = "button-pill";
+    pill.textContent = `${entry.label}: ${entry.count}`;
+    state.buttonsEl.appendChild(pill);
+  });
+}
+
+function registerButtonEvent(state, characteristic, payload) {
+  const label = `${characteristic.uuid.slice(0, 8)} • ${payload}`;
+  const existing = state.buttons.get(label) || { label, count: 0 };
+  existing.count += 1;
+  state.buttons.set(label, existing);
+  updateDeviceButtons(state);
+}
+
+function updateDataCard(state, characteristic, payload) {
+  const key = characteristic.uuid;
+  let cardEntry = state.dataCards.get(key);
+  if (!cardEntry) {
+    cardEntry = createDataCard(`Char ${characteristic.uuid}`);
+    state.dataCards.set(key, cardEntry);
+    state.dataGrid.appendChild(cardEntry.card);
+  }
+  cardEntry.value.textContent = payload;
+}
+
+async function attachCharacteristic(state, characteristic) {
+  const properties = [];
+  if (characteristic.properties.read) {
+    properties.push("read");
+  }
+  if (characteristic.properties.notify) {
+    properties.push("notify");
+  }
+  if (characteristic.properties.indicate) {
+    properties.push("indicate");
+  }
+
+  if (characteristic.properties.read) {
+    try {
+      const value = await characteristic.readValue();
+      const bytes = new Uint8Array(value.buffer);
+      updateDataCard(state, characteristic, formatBytes(bytes));
+    } catch (error) {
+      updateDataCard(state, characteristic, `Read error: ${error.message}`);
+    }
+  }
+
+  if (characteristic.properties.notify || characteristic.properties.indicate) {
+    try {
+      await characteristic.startNotifications();
+      characteristic.addEventListener("characteristicvaluechanged", (event) => {
+        const value = new Uint8Array(event.target.value.buffer);
+        const hex = formatBytes(value);
+        const ascii = formatAscii(value);
+        const combined = `${hex} | ${ascii}`;
+        updateDataCard(state, characteristic, combined);
+        registerButtonEvent(state, characteristic, hex);
+      });
+      state.activeNotifications.push(characteristic);
+    } catch (error) {
+      updateDataCard(state, characteristic, `Notify error: ${error.message}`);
+    }
+  }
+}
+
+async function discoverDeviceDetails(state) {
+  state.status.textContent = "Discovering services...";
+  const services = await state.server.getPrimaryServices();
+  for (const service of services) {
+    const characteristics = await service.getCharacteristics();
+    for (const characteristic of characteristics) {
+      await attachCharacteristic(state, characteristic);
+    }
+  }
+  state.status.textContent = "Listening";
+}
+
+function createDiagnosticsCard(state) {
+  const card = document.createElement("div");
+  card.className = "diagnostic-card";
+
+  const header = document.createElement("div");
+  header.className = "diagnostic-header";
+
+  const title = document.createElement("strong");
+  title.textContent = state.device.name || "Unknown device";
+
+  const status = document.createElement("span");
+  status.className = "status";
+  status.textContent = "Connected";
+
+  const meta = document.createElement("div");
+  meta.className = "diagnostic-meta";
+  const idLine = document.createElement("div");
+  idLine.textContent = `ID: ${state.device.id}`;
+  const servicesLine = document.createElement("div");
+  servicesLine.textContent = `Services: ${state.requestedServices.length || "All"}`;
+  meta.append(idLine, servicesLine);
+
+  header.append(title, status);
+
+  const actions = document.createElement("div");
+  actions.className = "diagnostic-actions";
+  const refreshBtn = document.createElement("button");
+  refreshBtn.textContent = "Refresh data";
+  const rereadBtn = document.createElement("button");
+  rereadBtn.textContent = "Re-read characteristics";
+  rereadBtn.className = "secondary";
+  const disconnectBtn = document.createElement("button");
+  disconnectBtn.textContent = "Disconnect";
+  disconnectBtn.className = "warn";
+  actions.append(refreshBtn, rereadBtn, disconnectBtn);
+
+  const buttonSection = document.createElement("div");
+  const buttonTitle = document.createElement("strong");
+  buttonTitle.textContent = "Button/notify activity";
+  const buttonsEl = document.createElement("div");
+  buttonsEl.className = "button-grid";
+  buttonSection.append(buttonTitle, buttonsEl);
+
+  const dataSection = document.createElement("div");
+  const dataTitle = document.createElement("strong");
+  dataTitle.textContent = "Characteristic data";
+  const dataGrid = document.createElement("div");
+  dataGrid.className = "data-grid";
+  dataSection.append(dataTitle, dataGrid);
+
+  card.append(header, meta, actions, buttonSection, dataSection);
+
+  refreshBtn.addEventListener("click", () => {
+    state.dataCards.forEach((entry) => {
+      entry.value.textContent = "--";
+    });
+  });
+
+  rereadBtn.addEventListener("click", async () => {
+    state.dataCards.forEach((entry) => {
+      entry.value.textContent = "Refreshing...";
+    });
+    state.buttons.clear();
+    updateDeviceButtons(state);
+    await discoverDeviceDetails(state);
+  });
+
+  disconnectBtn.addEventListener("click", () => {
+    if (state.device?.gatt?.connected) {
+      state.device.gatt.disconnect();
+    }
+  });
+
+  state.status = status;
+  state.buttonsEl = buttonsEl;
+  state.dataGrid = dataGrid;
+  state.card = card;
+  state.meta = meta;
+  state.refreshBtn = refreshBtn;
+  state.disconnectBtn = disconnectBtn;
+  state.rereadBtn = rereadBtn;
+  updateDeviceButtons(state);
+
+  return card;
+}
+
+async function connectDiagnosticDevice() {
+  let device;
+  const requestedServices = parseServicesInput(diagnosticServicesInput.value);
+  const options = { acceptAllDevices: true };
+  if (requestedServices.length) {
+    options.optionalServices = requestedServices;
+  }
+
+  try {
+    device = await navigator.bluetooth.requestDevice(options);
+  } catch (error) {
+    logEvent(`Diagnostic selection cancelled: ${error.message}`);
+    return;
+  }
+
+  if (!device) {
+    return;
+  }
+
+  const server = await device.gatt.connect();
+  const state = {
+    device,
+    server,
+    requestedServices,
+    dataCards: new Map(),
+    buttons: new Map(),
+    activeNotifications: [],
+    status: null,
+    buttonsEl: null,
+    dataGrid: null,
+    card: null,
+    meta: null,
+    refreshBtn: null,
+    disconnectBtn: null,
+    rereadBtn: null,
+  };
+
+  diagnostics.set(device.id, state);
+  const card = createDiagnosticsCard(state);
+  diagnosticDevicesEl.prepend(card);
+  disconnectDiagnosticBtn.disabled = false;
+
+  device.addEventListener("gattserverdisconnected", () => {
+    state.status.textContent = "Disconnected";
+    state.status.dataset.connected = "false";
+    logEvent(`Diagnostic device disconnected: ${device.name || device.id}`);
+    diagnostics.delete(device.id);
+    if (diagnostics.size === 0) {
+      disconnectDiagnosticBtn.disabled = true;
+    }
+  });
+
+  logEvent(`Diagnostic connected: ${device.name || "Unknown"}`);
+  await discoverDeviceDetails(state);
+}
+
+async function disconnectAllDiagnostics() {
+  diagnostics.forEach((state) => {
+    if (state.device?.gatt?.connected) {
+      state.device.gatt.disconnect();
+    }
+  });
+  diagnostics.clear();
+  diagnosticDevicesEl.innerHTML = "";
+  disconnectDiagnosticBtn.disabled = true;
+}
+
 async function disconnectZwiftPlay() {
   if (zwiftDevice?.gatt?.connected) {
     zwiftDevice.gatt.disconnect();
@@ -487,6 +782,8 @@ autoResistanceToggle.addEventListener("change", () => {
 });
 
 reloadRouteBtn.addEventListener("click", loadRoute);
+connectDiagnosticBtn.addEventListener("click", connectDiagnosticDevice);
+disconnectDiagnosticBtn.addEventListener("click", disconnectAllDiagnostics);
 
 loadRoute();
 updateTelemetryUI();
